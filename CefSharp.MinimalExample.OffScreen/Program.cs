@@ -17,7 +17,7 @@ namespace CefSharp.MinimalExample.OffScreen
 
         public static void Main(string[] args)
         {
-            const string testUrl = "https://www.google.com/";
+            const string testUrl = "https://www.wufoo.com/html5/attributes/02-autofocus.html";
 
             Console.WriteLine("This example application will load {0}, take a screenshot, and save it to your desktop.", testUrl);
             Console.WriteLine("You may see Chromium debugging output, please wait...");
@@ -47,6 +47,30 @@ namespace CefSharp.MinimalExample.OffScreen
             Cef.Shutdown();
         }
 
+        static void SendKeys()
+        {
+            KeyEvent[] events = new KeyEvent[] {
+                new KeyEvent() { FocusOnEditableField = true, WindowsKeyCode = 82, Modifiers = CefEventFlags.None, Type = KeyEventType.Char, IsSystemKey = false }, // Just the letter R, no shift (so no caps...?)
+                new KeyEvent() { FocusOnEditableField = true, WindowsKeyCode = 82, Modifiers = CefEventFlags.ShiftDown, Type = KeyEventType.Char, IsSystemKey = false }, // Capital R?
+                new KeyEvent() { FocusOnEditableField = true, WindowsKeyCode = 52, Modifiers = CefEventFlags.None, Type = KeyEventType.Char, IsSystemKey = false }, // Just the number 4
+                new KeyEvent() { FocusOnEditableField = true, WindowsKeyCode = 52, Modifiers = CefEventFlags.ShiftDown, Type = KeyEventType.Char, IsSystemKey = false }, // Shift 4 (should be $)
+            };
+
+            foreach (KeyEvent ev in events)
+            {
+                Thread.Sleep(100);
+                KeyEvent newEv = ev;
+                //newEv.Type = KeyEventType.KeyDown;
+                browser.GetBrowser().GetHost().SendKeyEvent(newEv);
+
+                //Thread.Sleep(100);
+
+                //newEv.Type = KeyEventType.KeyUp;
+                //browser.GetBrowser().GetHost().SendKeyEvent(newEv);
+
+            }
+        }
+
         private static void BrowserLoadingStateChanged(object sender, LoadingStateChangedEventArgs e)
         {
             // Check to see if loading is complete - this event is called twice, one when loading starts
@@ -56,15 +80,16 @@ namespace CefSharp.MinimalExample.OffScreen
             {
                 // Remove the load event handler, because we only want one snapshot of the initial page.
                 browser.LoadingStateChanged -= BrowserLoadingStateChanged;
+                browser.GetBrowser().GetHost().ShowDevTools();
 
-                var scriptTask = browser.EvaluateScriptAsync("document.getElementById('lst-ib').value = 'CefSharp Was Here!'");
-
-                scriptTask.ContinueWith(t =>
-                {
                     //Give the browser a little time to render
                     Thread.Sleep(500);
+
+                    // Send keys and wait.
+                    SendKeys();
+
                     // Wait for the screenshot to be taken.
-                    var task = browser.ScreenshotAsync();
+                    var task = browser.ScreenshotAsync(true);
                     task.ContinueWith(x =>
                     {
                         // Make a file to save it to (e.g. C:\Users\jan\Desktop\CefSharp screenshot.png)
@@ -86,9 +111,8 @@ namespace CefSharp.MinimalExample.OffScreen
                         // Tell Windows to launch the saved image.
                         Process.Start(screenshotPath);
 
-                        Console.WriteLine("Image viewer launched.  Press any key to exit.");			
+                        Console.WriteLine("Image viewer launched.  Press any key to exit.");
                     }, TaskScheduler.Default);
-                });
             }
         }
     }
